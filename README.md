@@ -81,29 +81,14 @@ Before creating your infrastructure you will need an AWS account and to have cre
 
 #### Create EC2 Key Pair
 
-1. Item 1
-1. Item 2
-1. Item 3
-   1. Item 3a
-   1. Item 3b
-
 In the AWS console, goto EC2. Down the left hand side under network and security select "Key Pairs". When you create a key pair the pem 
 file will be automatically downloaded to your download directory. To create a pem file to connect to the EC2 instance.
-1.  Select "Create Key Pair"
-  1. Ordered sub-list
-  1.    Enter the name. For instance "sharemytutoring-kp"
-  1.    Select the file format (pem).
-  1.    Click "Create Key Pair". 
-2.  The sharemytutoring-kp.pem file will automartically be downloaded. Keep this in a safe place as it will be used to connect to any EC2 
+1. Select "Create Key Pair"
+   1. Enter the name. For instance "sharemytutoring-kp"
+   1. Select the file format (pem).
+   1. Click "Create Key Pair". 
+1. The sharemytutoring-kp.pem file will automartically be downloaded. Keep this in a safe place as it will be used to connect to any EC2 
 instances you create.
-
-1. First ordered list item
-2. Another item
-  * Unordered sub-list. 
-1. Actual numbers don't matter, just that it's a number
-  1. Ordered sub-list
-4. And another item.
-
 
 #### Once Hosting Zone is Created
 
@@ -290,7 +275,7 @@ Once this cloudformation file is uploaded it will create the route53 hosted zone
 ## create-cloudfront-lambda-edge-fns
 
 This cloudformation file creates the lambda edge functions that add header records returned to the clients browsers. 
-** This needs to be run in the N. Virginia region.
+**This needs to be run in the N. Virginia region.**
 
 The following headers are returned.
   strict-transport-security   ensures future connections are over https and not http
@@ -343,39 +328,39 @@ This cloudformation file creates an EC2 instance, this instance allows us to con
 **Putty**
 
 AWS creates a PEM file for the key pair, putty needs a ppk (private key) file. The ppk can be generated from the pem file using puttygen.
-1.  Download putty.
-2.  Open PuttyGen
-3.  Click the load button, set the file type to "*" and select the AWS PEM file.
-4.  Click save private key.
+1. Download putty.
+1. Open PuttyGen
+1. Click the load button, set the file type to "*" and select the AWS PEM file.
+1. Click save private key.
 
 After running this script and the successful creation of the EC2 instance. Putty can be configured to connect to this EC2 server.
 
-1.  Find the AWS EC2 instance on AWS console. 
-2.  Select the instance and click the connect button at the top of the screen next to the Launch Instance button. This will display the connection details.
-3.  Get the user name and IP address of the EC2 instance from the connection screen.
-4.  Open the putty connect screen.
-  1.    Enter the IP address on the Session tab
-  2.    On the connection->Data screen enter the EC2 user name. Usually ec2-user.
-  3.    On the Connection-> SSH -> Auth screen browse to the ppk we creted earlier.
-  4.    Save the connection details and click Open.
-5.  You should now be connected to the EC2 Instance.
+1. Find the AWS EC2 instance on AWS console. 
+1. Select the instance and click the connect button at the top of the screen next to the Launch Instance button. This will display the connection details.
+1. Get the user name and IP address of the EC2 instance from the connection screen.
+1. Open the putty connect screen.
+   1. Enter the IP address on the Session tab
+   1. On the connection->Data screen enter the EC2 user name. Usually ec2-user.
+   1. On the Connection-> SSH -> Auth screen browse to the ppk we creted earlier.
+   1. Save the connection details and click Open.
+1. You should now be connected to the EC2 Instance.
 
 **MySQL Workbench SSH PassThrough Setup**
 
 Once the EC2 Instance is set
 
-1.  Start MySQL workbench on your local computer
-2.  Select Database -> Manage Connections from the menu at the top.
-3.  Goto your AWS MySQL database and get its end point e.g. sharemytutoring.<unique number>.eu-west-2.rds.amazonaws.com
-4.  Set the follow inputs on the Manage Server Connection from Workbench
-  1.    Connection Method   Standard TCP/IP over SSH
-  2.    SSH Hostname        The IP address of your EC2 instance
-  3.    SSH Username        The ec2 username e.g. ec2-user
-  4.    SSH Key File        Browse and select the AWS PEM file we generated (KeyPair)
-  5.    MySQL Hostname      This is the end point we found at 3.
-  6.    MySQL Server Port   3306 - unless you have changed the port number.
-  7.    Username            Admin - or the user name you created when creating the database
-5.  Click test connection at the bottom of the screen
+1. Start MySQL workbench on your local computer
+1. Select Database -> Manage Connections from the menu at the top.
+1. Goto your AWS MySQL database and get its end point e.g. sharemytutoring.<unique number>.eu-west-2.rds.amazonaws.com
+1. Set the follow inputs on the Manage Server Connection from Workbench
+   1. Connection Method   Standard TCP/IP over SSH
+   1. SSH Hostname        The IP address of your EC2 instance
+   1. SSH Username        The ec2 username e.g. ec2-user
+   1. SSH Key File        Browse and select the AWS PEM file we generated (KeyPair)
+   1. MySQL Hostname      This is the end point we found at 3.
+   1. MySQL Server Port   3306 - unless you have changed the port number.
+   1. Username            Admin - or the user name you created when creating the database
+1. Click test connection at the bottom of the screen
 
 You should now be able to connect the the MySQL database via the EC2 instance
 
