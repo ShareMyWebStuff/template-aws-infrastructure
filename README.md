@@ -1,4 +1,4 @@
-# cloudformation-aws-react-mysql-template
+# template-aws-infrastructure
 
 ## Introduction to Project
 
