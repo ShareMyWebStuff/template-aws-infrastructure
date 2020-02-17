@@ -1,0 +1,206 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Description: 'This template creates the mySQL database and a subnet group for the connectivity of the database.'
+
+#
+# Define the parameters
+#
+Parameters:
+
+  Environment:
+    Description: This is the environment you want to create (Dev / Prod)
+    Type: String
+    Default: Dev
+    AllowedValues:
+    - Dev
+    - Prod
+    ConstraintDescription: a valid staging environment needs to be entered
+
+  DomainName:
+    Description: This is the name of the domain (without the extension).
+    Type: String
+    AllowedPattern: "[a-z0-9-]+"
+    MinLength: 1
+    MaxLength: 64
+    Default: sharemytutoring
+    ConstraintDescription: enter a valid domain name without the extension
+
+  DomainExtension:
+    Description: This is the domain extension (com / co.uk / info)
+    Type: String
+    AllowedPattern: "[a-z0-9.]+"
+    Default: com
+    ConstraintDescription: a valid domain extension
+
+  StackNameVPC:
+    Description: This is the stack name of the associated VPC
+    Type: String
+    AllowedPattern: "[a-zA-Z0-9-.]+"
+    Default: sharemytutoring-com-vpc
+    ConstraintDescription: a valid stack name
+
+  DBServerSize:
+    Description: This is the virtual server size for the database.
+    Type: String
+    Default: db.t2.micro
+    AllowedValues: [db.t1.micro, db.m1.small, db.m1.medium, db.m1.large, db.m1.xlarge,
+      db.m2.xlarge, db.m2.2xlarge, db.m2.4xlarge, db.m3.medium, db.m3.large, db.m3.xlarge,
+      db.m3.2xlarge, db.m4.large, db.m4.xlarge, db.m4.2xlarge, db.m4.4xlarge, db.m4.10xlarge,
+      db.r3.large, db.r3.xlarge, db.r3.2xlarge, db.r3.4xlarge, db.r3.8xlarge, db.m2.xlarge,
+      db.m2.2xlarge, db.m2.4xlarge, db.cr1.8xlarge, db.t2.micro, db.t2.small, db.t2.medium,
+      db.t2.large]
+    ConstraintDescription: a valid database virtual server size must be selected
+  
+  DBServerName:
+    Description: This is the name of the database server.
+    Type: String
+    AllowedPattern: "[a-z0-9-]+"
+    Default: sharemytutoring
+    ConstraintDescription: enter a valid database server name
+    
+  DBDatabaseName:
+    Description: This is the name of the database server, if blank the default is the domain name.
+    Type: String
+    AllowedPattern: "[a-z0-9-]+"
+    Default: sharemytutoring
+    ConstraintDescription: enter a valid database name
+
+  DBUsername:
+    Description: This is the master user name for the database
+    Type: String
+    AllowedPattern: "[a-zA-Z0-9-]+"
+    Default: Admin
+    ConstraintDescription: enter a valid database username
+
+  DBPassword:
+    Description: This is the name of the database server, if blank the default is the domain name.
+    Type: String
+    AllowedPattern: "[a-zA-Z0-9-_!]+"
+    MinLength: 8
+    MaxLength: 41
+    ConstraintDescription: enter a valid database user password
+
+#
+# Define the mappings
+#
+Mappings:
+
+  #
+  # Depending on the evironment Dev / Prod setup the database spec.
+  #
+  DatabaseSetup:
+    Dev:
+      BackupRetentionPeriod: 0
+      DeleteAutomatedBackups: true
+      DeletionProtection: false
+      DeletionPolicy: false
+      MultiAZ: false
+    Prod:
+      BackupRetentionPeriod: 7
+      DeleteAutomatedBackups: false
+      DeletionProtection: true
+      MultiAZ: true
+
+#
+# Determine the order of the parameters as seen via Cloudformation, also set the headers (labels) shown.
+#
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+    -
+      Label:
+        default: "General Setup"
+      Parameters:
+        - Environment
+        - DomainName
+        - DomainExtension
+    -
+      Label:
+        default: "VPC Stack Name"
+      Parameters:
+        - StackNameVPC
+    -
+      Label:
+        default: "Database Configuration"
+      Parameters:
+        - DBServerSize
+        - DBServerName
+        - DBDatabaseName
+        - DBUsername
+        - DBPassword
+
+#
+# Define the resources
+#
+Resources:
+
+  #
+  # Create the DB Subnet Group
+  #
+  MySQLSubnetGroup:
+    Type: "AWS::RDS::DBSubnetGroup"
+    Properties:
+      DBSubnetGroupDescription: !Join ['-', [!Ref DomainName, !Join [ "-", !Split [ ".", !Ref DomainExtension ] ], 'db-subnet-group']]
+      DBSubnetGroupName: !Join ['-', [!Ref DomainName, !Join [ "-", !Split [ ".", !Ref DomainExtension ] ], 'db-subnet-group']]
+      SubnetIds:
+      - Fn::ImportValue: !Sub "${StackNameVPC}-public-subnet-a"
+      - Fn::ImportValue: !Sub "${StackNameVPC}-private-subnet-a"
+      - Fn::ImportValue: !Sub "${StackNameVPC}-private-subnet-b"
+      Tags:
+      - Key: Name
+        Value: !Join ['-', [!Ref DomainName, !Join [ "-", !Split [ ".", !Ref DomainExtension ] ], 'db-subnet-group']]
+
+  #
+  # Setup the MySQL database
+  #
+  MySQLDatabase:
+    Type: "AWS::RDS::DBInstance"
+    DependsOn: MySQLSubnetGroup
+    Properties:
+      AllocatedStorage: 20
+      AllowMajorVersionUpgrade: false
+      AutoMinorVersionUpgrade: true
+      BackupRetentionPeriod: !FindInMap [DatabaseSetup, !Ref Environment, BackupRetentionPeriod]
+      DBInstanceClass: !Ref DBServerSize
+      DBInstanceIdentifier: !Ref DBServerName
+      DBName: !Ref DBDatabaseName
+      DBSubnetGroupName: !Ref MySQLSubnetGroup
+      DeleteAutomatedBackups: !FindInMap [DatabaseSetup, !Ref Environment, DeleteAutomatedBackups]
+      DeletionProtection: !FindInMap [DatabaseSetup, !Ref Environment, DeletionProtection]
+      Engine: MySQL
+      EngineVersion: "5.7.22"
+      MasterUsername: !Ref DBUsername
+      MasterUserPassword: !Ref DBPassword
+      MaxAllocatedStorage: 1000
+      MultiAZ: !FindInMap [DatabaseSetup, !Ref Environment, MultiAZ]
+      PreferredBackupWindow: 02:12-03:12
+      PreferredMaintenanceWindow: mon:03:14-mon:04:14
+      PubliclyAccessible: false
+      StorageType: "gp2"
+      Tags: 
+      - Key: Name
+        Value: !Join ['-', [!Ref DomainName, !Join [ "-", !Split [ ".", !Ref DomainExtension ] ], 'db']]
+      VPCSecurityGroups: 
+      - Fn::ImportValue: !Sub "${StackNameVPC}-be-sg-id"
+
+
+Outputs:
+
+  MySQLDatabase:
+    Description: The address url of the MySQL database
+    Value: !Ref MySQLDatabase
+    Export:
+      Name: !Sub "${AWS::StackName}-id"
+
+  MySQLDatabaseAddress:
+    Description: The address url of the MySQL database
+    Value: !GetAtt MySQLDatabase.Endpoint.Address
+    Export:
+      Name: !Sub "${AWS::StackName}-address"
+
+  MySQLDatabasePort:
+    Description: The port of the MySQL database
+    Value: !GetAtt MySQLDatabase.Endpoint.Port
+    Export:
+      Name: !Sub "${AWS::StackName}-port"
+

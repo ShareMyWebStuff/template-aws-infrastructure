@@ -1,0 +1,74 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Description: 'This template creates an EC2 instance to connect to the database through. Please see the README.md 
+file for more information.'
+
+#
+# Define the parameters
+#
+Parameters:
+
+  DomainName:
+    Description: This is the name of the domain (without the extension).
+    Type: String
+    AllowedPattern: "[a-z0-9-]+"
+    MinLength: 1
+    MaxLength: 64
+    Default: sharemytutoring
+    ConstraintDescription: enter a valid domain name without the extension
+
+  DomainExtension:
+    Description: This is the domain extension (com / co.uk / info)
+    Type: String
+    AllowedPattern: "[a-z0-9.]+"
+    Default: com
+    ConstraintDescription: a valid domain extension
+
+  KeyPairName:
+    Description: Name of an existing EC2 KeyPair to enable SSH access to the instance
+    Type: AWS::EC2::KeyPair::KeyName
+    Default: GenericKeyPair
+    ConstraintDescription: must be the name of an existing EC2 KeyPair.
+
+  StackNameOfCreateVPC:
+    Description: This is the stack name of the VPC
+    Type: String
+    AllowedPattern: "[a-zA-Z0-9-.]+"
+    Default: sharemytutoring-com-vpc
+    ConstraintDescription: a valid stack name for the VPC we created earlier
+
+  InstanceType:
+    Description: EC2 instance type
+    Type: String
+    Default: t2.micro
+    AllowedValues:
+    - t1.micro
+    - t2.nano
+    - t2.micro
+    - t2.small
+    - t2.medium
+
+Resources:
+
+  PublicEC2Instance: 
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: !Ref InstanceType
+      KeyName: !Ref KeyPairName
+      ImageId: ami-0e49551fc78560451
+      NetworkInterfaces:
+      - AssociatePublicIpAddress: true
+        DeviceIndex: 0
+        GroupSet:
+        - Fn::ImportValue: !Sub "${StackNameOfCreateVPC}-fe-sg"
+        SubnetId:
+          Fn::ImportValue: !Sub "${StackNameOfCreateVPC}-public-subnet-a"
+      UserData:
+        Fn::Base64: |
+           #!/bin/bash
+           yum update -y
+           yum install mysql -y
+      Tags:
+      - Key: Name
+        Value: !Join ['-', [!Ref DomainName, !Join [ "-", !Split [ ".", !Ref DomainExtension ] ], 'public-ec2']]
+

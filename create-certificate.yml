@@ -1,0 +1,88 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Description: A cloudformation template for creating a Hosted Zone in Route53
+
+#
+#
+# CERTIFICATE NEEDS TO BE IN VIRGINIA REGION
+#
+#
+
+# If you need to point another domain to this you can add a list
+#  SubjectAlternativeNames: 
+#  - www.sharemytutoring.net
+#  - www.sharemytutoring.co
+#
+
+Parameters:
+
+  DomainName:
+    Description: This is the name of the domain (without the extension).
+    Type: String
+    AllowedPattern: "[a-z0-9-]+"
+    MinLength: 1
+    MaxLength: 64
+    Default: sharemytutoring
+    ConstraintDescription: enter a valid domain name without the extension
+
+  DomainExtension:
+    Description: This is the domain extension (com / co.uk / info)
+    Type: String
+    AllowedPattern: "[a-z0-9.]+"
+    Default: com
+    ConstraintDescription: a valid domain extension
+
+  HostedZoneID:
+      Description: The hosting zone id
+      Type: AWS::Route53::HostedZone::Id
+
+Metadata:
+
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+    -
+      Label:
+        default: "Run this in region N. VIRGINIA."
+      Parameters:
+        - DomainName
+        - DomainExtension
+        - HostedZoneID
+
+Resources:
+
+  Certificate:
+    Type: AWS::CertificateManager::Certificate
+    Properties:
+      DomainName: !Join ['', [!Ref DomainName,  ".", !Ref DomainExtension ] ]
+      ValidationMethod: DNS
+      SubjectAlternativeNames:
+      - !Join ['', [!Ref DomainName,  ".", !Ref DomainExtension ] ]
+      - !Join ['', ['*.', !Ref DomainName,  ".", !Ref DomainExtension ] ]
+      DomainValidationOptions:
+      - DomainName: !Join ['', [!Ref DomainName,  ".", !Ref DomainExtension ] ]
+        ValidationDomain: !Join ['', [!Ref DomainName,  ".", !Ref DomainExtension ] ]
+      Tags:
+        - Key: HostedZoneId
+          Value: !Ref HostedZoneID
+
+
+  # Certificate:
+  #   Type: AWS::CertificateManager::Certificate
+  #   Properties:
+  #     DomainName: !Join ['', ['*.', !Ref DomainName,  ".", !Ref DomainExtension ] ]
+  #     ValidationMethod: DNS
+  #     SubjectAlternativeNames:
+  #     - !Join ['', [!Ref DomainName,  ".", !Ref DomainExtension ] ]
+  #     - !Join ['', ['*.', !Ref DomainName,  ".", !Ref DomainExtension ] ]
+  #     DomainValidationOptions:
+  #     - DomainName: !Join ['', [!Ref DomainName,  ".", !Ref DomainExtension ] ]
+  #       ValidationDomain: !Join ['', [!Ref DomainName,  ".", !Ref DomainExtension ] ]
+  #     Tags:
+  #       - Key: HostedZoneId
+  #         Value: !Ref HostedZoneID
+
+Outputs:
+
+  Certificate:
+    Description: The ARN of the certificate
+    Value: !Ref Certificate

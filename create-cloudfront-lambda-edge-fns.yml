@@ -1,0 +1,122 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Description: 'This template creates a VPC for the web project and all its associated components. See README.md for a indepth description.'
+
+#
+# Define the parameters
+#
+# - DomainName
+# - DomainExtension
+#
+Parameters:
+
+  DomainName:
+    Type: String
+    Description: This is the name of the domain (without the extension).
+    AllowedPattern: "[a-z0-9-]+"
+    MinLength: 1
+    MaxLength: 64
+    Default: sharemytutoring
+    ConstraintDescription: enter a valid domain name without the extension
+
+  DomainExtension:
+    Type: String
+    Description: This is the domain extension (com / co.uk / info)
+    AllowedPattern: "[a-z0-9.]+"
+    Default: com
+    ConstraintDescription: a valid domain extension
+
+#
+# Define the resources
+#
+Resources:
+
+  # Create the Lambda edge role
+  LambdaEdgeRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - edgelambda.amazonaws.com
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+
+  # Create the Lambda edge function version
+  # Function versioning is a requirement for lambda edge.
+  LambdaEdgeFunctionVersion:
+    Type: AWS::Lambda::Version
+    Properties:
+      FunctionName: !Ref LambdaEdgeFunction
+      Description: !Sub "URL rewriting for ${DomainName}.${DomainExtension}"
+
+  # Lambda Edge Function
+  #
+  # strict-transport-security   ensures future connections are over https and not http
+  # x-content-type-options      MIME types in Content-Type are not changed. Stops MIME type sniffinh
+  # x-frame-options             Stops our site being embedded in <frame>, <iframe>, <embed> or <object>. Stops clickjacking attacks.
+  # content-security-policy     Helps guard against cross site scripting attacks.
+  # x-xss-protection            IE, Chrome and Safari will stop loading if they detect cross-site scripting
+  # referrer-policy             Referrer will be sent if the same origin
+  #
+  LambdaEdgeFunction:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      Description: !Sub 'A custom Lambda@Edge function for serving custom headers from CloudFront Distribution'
+      FunctionName: !Sub '${DomainName}-${DomainExtension}-lambda-edge'
+      Handler: index.handler
+      Role: !GetAtt 'LambdaEdgeRole.Arn'
+      MemorySize: 128
+      Timeout: 5
+      Code:
+        ZipFile: !Sub |
+          'use strict';
+           exports.handler = (event, context, callback) => {
+              console.log('Adding additional headers to CloudFront response.');
+              const response = event.Records[0].cf.response;
+              response.headers['strict-transport-security'] = [{ key: 'Strict-Transport-Security', value: 'max-age=86400; includeSubdomains; preload' }];
+              response.headers['x-content-type-options'] = [{ key: 'X-Content-Type-Options', value: 'nosniff' }];
+              response.headers['x-frame-options'] = [{ key:   'X-Frame-Options', value: "DENY" }];
+              response.headers['content-security-policy'] = [{ key:   'Content-Security-Policy', value: "default-src 'none'; img-src 'self'; script-src 'self'; style-src 'self'; object-src 'none'" }];
+              response.headers['x-xss-protection'] = [{ key:   'X-XSS-Protection', value: "1; mode=block" }];
+              response.headers['referrer-policy'] = [{ key:   'Referrer-Policy', value: "same-origin" }];
+              callback(null, response);
+            };
+      Runtime: nodejs10.x
+
+Outputs:
+
+  LambdaEdgeRole:
+    Description: 'Lambda Edge Role'
+    Value: !Ref LambdaEdgeRole
+
+  LambdaEdgeRoleARN:
+    Description: 'Lambda Edge Role ARN'
+    Value: !GetAtt LambdaEdgeRole.Arn
+    
+  LambdaEdgeRoleId:
+    Description: 'Lambda Edge Role Id'
+    Value: !GetAtt LambdaEdgeRole.RoleId
+
+  LambdaEdgeFunctionVersion:
+    Description: 'Lambda Edge Function Version '
+    Value: !Ref LambdaEdgeFunctionVersion
+
+  LambdaEdgeFunctionVersionVersion:
+    Description: 'Lambda Edge Function Version Version'
+    Value: !GetAtt LambdaEdgeFunctionVersion.Version
+
+  LambdaEdgeFunction:
+    Description: 'Lambda Edge Function'
+    Value: !Ref LambdaEdgeFunction
+
+  LambdaEdgeFunctionArn:
+    Description: 'Lambda Edge Function Arn'
+    Value: !GetAtt LambdaEdgeFunction.Arn
+

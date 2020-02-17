@@ -1,0 +1,58 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Description: 'This template creates the hosting zone for your domain name. You will need to manually update the nameserver records on your doamion name. 
+See README.md for a indepth description.'
+
+#
+# Define the parameters
+#
+# - DomainName
+# - DomainExtension
+#
+Parameters:
+
+  DomainName:
+    Description: This is the name of the domain (without the extension).
+    Type: String
+    AllowedPattern: "[a-z0-9-]+"
+    MinLength: 1
+    MaxLength: 64
+    Default: sharemytutoring
+    ConstraintDescription: enter a valid domain name without the extension
+
+  DomainExtension:
+    Description: This is the domain extension (com / co.uk / info)
+    Type: String
+    AllowedPattern: "[a-z0-9.]+"
+    Default: com
+    ConstraintDescription: a valid domain extension
+
+#
+# Define the resources
+#
+Resources:
+
+  #
+  # Set up the Route53 Hosting Zone etc
+  #
+  HostedZone:
+    Type: AWS::Route53::HostedZone
+    Properties:
+      HostedZoneConfig:
+        Comment: !Join ['', ['Hosting zone for ', !Ref DomainName, '.', !Ref DomainExtension ]]
+      HostedZoneTags:
+      - Key: StackName
+        Value: !Ref AWS::StackName
+      Name: !Join
+      - '.'
+      - - !Ref DomainName
+        - !Ref DomainExtension
+
+Outputs:
+
+  HostedZoneId:
+    Description: The hosting zone ID
+    Value: !Ref HostedZone
+    Export:
+      Name: !Sub "${AWS::StackName}-id"
+

@@ -1,0 +1,387 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Description: 'This template creates a VPC for the web project and all its associated components. See README.md for a indepth description.'
+
+#
+# Define the parameters
+#
+# - DomainName
+# - DomainExtension
+#
+Parameters:
+
+  DomainName:
+    Description: This is the name of the domain (without the extension).
+    Type: String
+    AllowedPattern: "[a-z0-9-]+"
+    MinLength: 1
+    MaxLength: 64
+    Default: sharemytutoring
+    ConstraintDescription: enter a valid domain name without the extension
+
+  DomainExtension:
+    Description: This is the domain extension (com / co.uk / info)
+    Type: String
+    AllowedPattern: "[a-z0-9.]+"
+    Default: com
+    ConstraintDescription: a valid domain extension
+
+#
+# Define the resources
+#
+Resources:
+
+  #
+  # Create the VPC
+  #
+  VPC: 
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      InstanceTenancy: default
+      Tags:
+        - Key: Name
+          Value: !Join ['-', [!Ref DomainName, !Join [ "-", !Split [ ".", !Ref DomainExtension ] ], 'vpc']]
+        -
+          Key: "DomainName"
+          Value: !Ref DomainName
+        -
+          Key: "DomainExtension"
+          Value: !Ref DomainExtension
+
+  #
+  # Create the internet gateway
+  #
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    DependsOn: VPC
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Join ['-', [!Ref DomainName, !Join [ "-", !Split [ ".", !Ref DomainExtension ] ], 'igw']]
+
+  #
+  # Attach the internet gateway to the VPC
+  #
+  AttachGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    DependsOn: 
+    - VPC
+    - InternetGateway
+    Properties:
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref InternetGateway
+
+  #
+  # Create the public and private subnets within the VPC
+  #
+  PublicSubnet:
+    Type: AWS::EC2::Subnet
+    DependsOn: VPC
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: 10.0.0.0/24
+      AvailabilityZone: !Select [ 0, !GetAZs ]    # Get the first AZ in the list       
+      MapPublicIpOnLaunch: true
+      Tags:
+      - Key: Name
+        Value: !Join ['-', [!Ref DomainName, !Join [ "-", !Split [ ".", !Ref DomainExtension ] ], 'public-subnet-a']]
+
+  PrivateSubnetA:
+    Type: AWS::EC2::Subnet
+    DependsOn: VPC
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: 10.0.2.0/24
+      AvailabilityZone: !Select [ 0, !GetAZs ]    # Get the first AZ in the list 
+      Tags:
+      - Key: Name
+        Value: !Join ['-', [!Ref DomainName, !Join [ "-", !Split [ ".", !Ref DomainExtension ] ], 'private-subnet-a']]
+
+  PrivateSubnetB:
+    Type: AWS::EC2::Subnet
+    DependsOn: VPC
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: 10.0.3.0/24
+      AvailabilityZone: !Select [ 1, !GetAZs ]    # Get the second AZ in the list 
+      Tags:
+      - Key: Name
+        Value: !Join ['-', [!Ref DomainName, !Join [ "-", !Split [ ".", !Ref DomainExtension ] ], 'private-subnet-b']]
+
+  #
+  # Routes - Create the route tables
+  #
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    DependsOn: VPC
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+      - Key: Name
+        Value: !Join ['-', [!Ref DomainName, !Join [ "-", !Split [ ".", !Ref DomainExtension ] ], 'public-route-A']]
+
+  #
+  # Public route has been setup with internet access.
+  #
+  PublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: 
+    - PublicRouteTable
+    - AttachGateway
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway 
+
+  PrivateRouteTableA:
+    Type: AWS::EC2::RouteTable
+    DependsOn: VPC
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+      - Key: Name
+        Value: !Join ['-', [!Ref DomainName, !Join [ "-", !Split [ ".", !Ref DomainExtension ] ], 'private-route-A']]
+
+  PrivateRouteTableB:
+    Type: AWS::EC2::RouteTable
+    DependsOn: VPC
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+      - Key: Name
+        Value: !Join ['-', [!Ref DomainName, !Join [ "-", !Split [ ".", !Ref DomainExtension ] ], 'private-route-B']]
+
+  #
+  # Associate the routes to the required subnets
+  #
+  PublicSubnetRouteAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    DependsOn: 
+    - PublicRouteTable
+    - PublicSubnet
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref PublicSubnet
+
+  PrivateSubnetRouteAssociationA:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    DependsOn: 
+    - PrivateRouteTableA
+    - PrivateSubnetA
+    Properties:
+      RouteTableId: !Ref PrivateRouteTableA
+      SubnetId: !Ref PrivateSubnetA
+
+  PrivateSubnetRouteAssociationB:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    DependsOn: 
+    - PrivateRouteTableB
+    - PrivateSubnetB
+    Properties:
+      RouteTableId: !Ref PrivateRouteTableB
+      SubnetId: !Ref PrivateSubnetB
+
+  #
+  # Use the ACL created as default
+  #
+  ACLAssociationPublic:
+    Type: AWS::EC2::SubnetNetworkAclAssociation
+    DependsOn: PublicSubnet
+    Properties:
+      NetworkAclId: !GetAtt VPC.DefaultNetworkAcl
+      SubnetId: !Ref PublicSubnet
+
+  ACLAssociationPrivateA:
+    Type: AWS::EC2::SubnetNetworkAclAssociation
+    DependsOn: PrivateSubnetA
+    Properties:
+      NetworkAclId: !GetAtt VPC.DefaultNetworkAcl
+      SubnetId: !Ref PrivateSubnetA
+
+  ACLAssociationPrivateB:
+    Type: AWS::EC2::SubnetNetworkAclAssociation
+    DependsOn: PrivateSubnetB
+    Properties:
+      NetworkAclId: !GetAtt VPC.DefaultNetworkAcl
+      SubnetId: !Ref PrivateSubnetB
+
+  #
+  # Create Security Groups
+  # http tcp 80 0.0.0.0/0
+  # ::/80
+  # ssh current ip address
+  #
+  FrontSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    DependsOn: VPC
+    Properties:
+      GroupDescription: Frontend security group
+      GroupName: !Join ['-', [!Ref DomainName, !Join [ "-", !Split [ ".", !Ref DomainExtension ] ], 'FE-SG']]
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+      - IpProtocol: tcp
+        FromPort: 80
+        ToPort: 80
+        CidrIp: 0.0.0.0/0
+      - IpProtocol: tcp
+        FromPort: 80
+        ToPort: 80
+        CidrIpv6: '::/0'
+      - IpProtocol: tcp
+        FromPort: 22
+        ToPort: 22
+        CidrIp: 0.0.0.0/0
+      Tags:
+      - Key: Name
+        Value: !Join ['-', [!Ref DomainName, !Join [ "-", !Split [ ".", !Ref DomainExtension ] ], 'FE-SG']]
+
+  #
+  # Lambda Security Group
+  #
+  LambdaSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    DependsOn: VPC
+    Properties:
+      GroupDescription: Lambda security group
+      GroupName: !Join ['-', [!Ref DomainName, !Join [ "-", !Split [ ".", !Ref DomainExtension ] ], 'LAMBDA-SG']]
+      VpcId: !Ref VPC
+      Tags:
+      - Key: Name
+        Value: !Join ['-', [!Ref DomainName, !Join [ "-", !Split [ ".", !Ref DomainExtension ] ], 'LAMBDA-SG']]
+
+
+
+  #
+  # Allow the backend to be accessed via the frontend and lambda functions
+  #
+  BackendSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    DependsOn: VPC
+    Properties:
+      GroupDescription: Backend database security group
+      GroupName: !Join ['-', [!Ref DomainName, !Join [ "-", !Split [ ".", !Ref DomainExtension ] ], 'BE-SG']]
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+      - IpProtocol: tcp
+        FromPort: 3306
+        ToPort: 3306
+        SourceSecurityGroupId: !Ref FrontSecurityGroup
+      - IpProtocol: tcp
+        FromPort: 3306
+        ToPort: 3306
+        SourceSecurityGroupId: !Ref LambdaSecurityGroup
+      Tags:
+      - Key: Name
+        Value: !Join ['-', [!Ref DomainName, !Join [ "-", !Split [ ".", !Ref DomainExtension ] ], 'BE-SG']]
+
+Outputs:
+  # VPC Details
+  VPC:
+    Description: The instance ID of the VPC
+    Value: !Ref VPC
+    Export:
+      Name: !Sub "${AWS::StackName}-vpcid"
+
+  VPCDefaultACL:
+    Description: Get the default Network ACL
+    Value: !GetAtt
+    - VPC
+    - DefaultNetworkAcl
+
+  VPCDefaultSG:
+    Description: Get the default Security Group
+    Value: !GetAtt
+    - VPC
+    - DefaultSecurityGroup
+
+  InternetGateway:
+    Description: The Internet Gateway
+    Value: !Ref InternetGateway
+
+  PublicSubnet:
+    Description: The instance ID of the Public Subnet
+    Value: !Ref PublicSubnet
+    Export:
+      Name: !Sub "${AWS::StackName}-public-subnet-a"
+
+  PrivateSubnetA:
+    Description: The instance ID of the Private Subnet
+    Value: !Ref PrivateSubnetA
+    Export:
+      Name: !Sub "${AWS::StackName}-private-subnet-a"
+
+  PrivateSubnetB:
+    Description: The instance ID of the Private Subnet
+    Value: !Ref PrivateSubnetB
+    Export:
+      Name: !Sub "${AWS::StackName}-private-subnet-b"
+
+  PublicRoute:
+    Description: The instance ID of the public route
+    Value: !Ref PublicRoute
+
+  PrivateRouteTableA:
+    Description: The instance ID of the private route A
+    Value: !Ref PrivateRouteTableA
+
+  PrivateRouteTableB:
+    Description: The instance ID of the private route B
+    Value: !Ref PrivateRouteTableB
+
+  PublicSubnetRouteAssociation:
+    Description: The instance ID of the public route association
+    Value: !Ref PublicSubnetRouteAssociation
+
+  PrivateSubnetRouteAssociationA:
+    Description: The instance ID of the private route association A
+    Value: !Ref PrivateSubnetRouteAssociationA
+
+  PrivateSubnetRouteAssociationB:
+    Description: The instance ID of the public route association B
+    Value: !Ref PrivateSubnetRouteAssociationB
+
+  ACLAssociationPublic:
+    Description: The instance ID of the public ACL association
+    Value: !Ref ACLAssociationPublic
+
+  ACLAssociationPrivateA:
+    Description: The instance ID of the private ACL association A
+    Value: !Ref ACLAssociationPrivateA
+
+  ACLAssociationPrivateB:
+    Description: The instance ID of the private ACL association B
+    Value: !Ref ACLAssociationPrivateB
+
+  FrontSecurityGroup:
+    Description: The resource ID of the front end security group
+    Value: !Ref FrontSecurityGroup
+    Export:
+      Name: !Sub "${AWS::StackName}-fe-sg"
+
+  FrontSecurityGroupID:
+    Description: The resource ID of the front end security group
+    Value: !GetAtt FrontSecurityGroup.GroupId
+    Export:
+      Name: !Sub "${AWS::StackName}-fe-sg-id"
+
+  LambdaSecurityGroup:
+    Description: The resource ID of the lambda security group
+    Value: !Ref LambdaSecurityGroup
+
+  LambdaSecurityGroupID:
+    Description: The resource ID of the lambda security group
+    Value: !GetAtt LambdaSecurityGroup.GroupId
+
+  BackendSecurityGroup:
+    Description: The resource ID of the backend security group
+    Value: !Ref BackendSecurityGroup
+    Export:
+      Name: !Sub "${AWS::StackName}-be-sg"
+
+  BackendSecurityGroupID:
+    Description: The resource ID of the backend end security group
+    Value: !GetAtt BackendSecurityGroup.GroupId
+    Export:
+      Name: !Sub "${AWS::StackName}-be-sg-id"
+

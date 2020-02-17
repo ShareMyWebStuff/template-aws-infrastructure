@@ -1,0 +1,253 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Description: 'This template creates the S3 buckets to contain our static web site for the specified domain name and points the hosting zone to the S3 bucket..'
+
+#
+# Define the parameters
+#
+# - StackNameHostedZone
+# - DomainName
+# - DomainExtension
+#
+Parameters:
+
+  StackNameHostedZone:
+    Description: This is the stack name of the associated hosted zone
+    Type: String
+    AllowedPattern: "[a-zA-Z0-9-.]+"
+    Default: sharemytutoring-com-hosted-zone
+    ConstraintDescription: a valid stack name for the associated hosted zone
+
+  DomainName:
+    Description: This is the name of the domain (without the extension).
+    Type: String
+    AllowedPattern: "[a-z0-9-]+"
+    MinLength: 1
+    MaxLength: 64
+    Default: sharemytutoring
+    ConstraintDescription: enter a valid domain name without the extension
+
+  DomainExtension:
+    Description: This is the domain extension (com / co.uk / info)
+    Type: String
+    AllowedPattern: "[a-z0-9.]+"
+    Default: com
+    ConstraintDescription: a valid domain extension
+
+Mappings:
+
+  #
+  # Set specific variables determined by the region
+  #
+  RegionMap:
+    us-east-2:
+      S3HostingZoneId: Z2O1EMRO9K5GLX
+      S3Address: s3-website.us-east-2.amazonaws.com
+      RegionName: 'US East (Ohio)'
+    us-east-1:
+      S3HostingZoneId: Z3AQBSTGFYJSTF 
+      S3Address: s3-website-us-east-1.amazonaws.com
+      RegionName: 'US East (N. Virginia)'
+    us-west-1:
+      S3HostingZoneId: Z2F56UZL2M1ACD 
+      S3Address: s3-website-us-west-1.amazonaws.com
+      RegionName: 'US West (N. California)'
+    us-west-2:
+      S3HostingZoneId: Z3BJ6K6RIION7M
+      S3Address: s3-website-us-west-2.amazonaws.com
+      RegionName: 'US West (Oregon)'
+    ap-east-1:
+      S3HostingZoneId: ZNB98KWMFR0R6
+      S3Address: s3-website.ap-east-1.amazonaws.com
+      RegionName: 'Asia Pacific (Hong Kong)'
+    ap-south-1:
+      S3HostingZoneId: Z11RGJOFQNVJUP
+      S3Address: s3-website.ap-south-1.amazonaws.com
+      RegionName: 'Asia Pacific (Mumbai)'
+    ap-northeast-3:
+      S3HostingZoneId: Z2YQB5RD63NC85
+      S3Address: s3-website.ap-northeast-3.amazonaws.com
+      RegionName: 'Asia Pacific (Osaka-Local)'
+    ap-northeast-2:
+      S3HostingZoneId: Z3W03O7B5YMIYP
+      S3Address: s3-website.ap-northeast-2.amazonaws.com
+      RegionName: 'Asia Pacific (Seoul)'
+    ap-southeast-1:
+      S3HostingZoneId: Z3O0J2DXBE1FTB
+      S3Address: s3-website-ap-southeast-1.amazonaws.com
+      RegionName: 'Asia Pacific (Singapore)'
+    ap-southeast-2:
+      S3HostingZoneId: Z1WCIGYICN2BYD
+      S3Address: s3-website-ap-southeast-2.amazonaws.com
+      RegionName: 'Asia Pacific (Sydney)'
+    ap-northeast-1:
+      S3HostingZoneId: Z2M4EHUR26P7ZW
+      S3Address: s3-website-ap-northeast-1.amazonaws.com
+      RegionName: 'Asia Pacific (Tokyo)'
+    ca-central-1:
+      S3HostingZoneId: Z1QDHH18159H29
+      S3Address: s3-website.ca-central-1.amazonaws.com
+      RegionName: 'Canada (Central)'
+    eu-central-1:
+      S3HostingZoneId: Z21DNDUVLTQW6Q
+      S3Address: s3-website.eu-central-1.amazonaws.com
+      RegionName: 'Europe (Frankfurt)'
+    eu-west-1:
+      S3HostingZoneId: Z1BKCTXD74EZPE
+      S3Address: s3-website-eu-west-1.amazonaws.com
+      RegionName: 'Europe (Ireland)'
+    eu-west-2:
+      S3HostingZoneId: Z3GKZC51ZF0DB4
+      S3Address: s3-website.eu-west-2.amazonaws.com
+      RegionName: 'Europe (London)'
+    eu-west-3:
+      S3HostingZoneId: Z3R1K369G5AVDG
+      S3Address: s3-website.eu-west-3.amazonaws.com
+      RegionName: 'Europe (Paris)'
+    eu-north-1:
+      S3HostingZoneId: Z3BAZG2TWCNX0D
+      S3Address: s3-website.eu-north-1.amazonaws.com
+      RegionName: 'Europe (Stockholm)'
+    me-south-1:
+      S3HostingZoneId: Z7KQH4QJS55SO
+      S3Address: s3-website-sa-east-1.amazonaws.com
+      RegionName: 'Middle East (Bahrain)'
+    sa-east-1:
+      S3HostingZoneId: Z1MPMWCPA7YB62
+      S3Address: s3-website.me-south-1.amazonaws.com
+      RegionName: 'South America (São Paulo)'
+
+#
+# Define the resources
+#
+Resources:
+
+  DNSRoot:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      Name: !Join 
+      - ''
+      - - !Ref DomainName 
+        - '.'
+        - !Ref DomainExtension
+        - '.'
+      HostedZoneId: 
+        Fn::ImportValue: !Sub "${StackNameHostedZone}-id"
+      Type: A
+      AliasTarget:
+        HostedZoneId: !FindInMap [RegionMap, !Ref "AWS::Region", S3HostingZoneId]
+        DNSName: !FindInMap [RegionMap, !Ref "AWS::Region", S3Address]
+
+  DNSWWW:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      Name: !Join 
+      - ''
+      - - 'www.'
+        - !Ref DomainName 
+        - '.'
+        - !Ref DomainExtension
+        - '.'
+      HostedZoneId: 
+        Fn::ImportValue: !Sub "${StackNameHostedZone}-id"
+      Type: A
+      AliasTarget:
+        HostedZoneId: !FindInMap [RegionMap, !Ref "AWS::Region", S3HostingZoneId]
+        DNSName: !FindInMap [RegionMap, !Ref "AWS::Region", S3Address]
+
+  RootBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Join 
+      - ''
+      - - !Ref DomainName
+        - '.'
+        - !Ref DomainExtension
+      WebsiteConfiguration:
+        IndexDocument: index.html
+        ErrorDocument: 404.html
+
+  RootBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref RootBucket
+      PolicyDocument:
+        Statement:
+          Sid: AddPerm
+          Effect: Allow
+          Principal: "*"
+          Action: "s3:GetObject"
+          Resource: !Join 
+          - ''
+          - - "arn:aws:s3:::"
+            - !Ref DomainName
+            - '.'
+            - !Ref DomainExtension
+            - "/*"
+
+  WWWBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Join
+      - ''
+      - - 'www.'
+        - !Ref DomainName
+        - '.'
+        - !Ref DomainExtension
+      WebsiteConfiguration:
+        RedirectAllRequestsTo: 
+          HostName: !Join
+          - ''
+          - - !Ref DomainName
+            - '.'
+            - !Ref DomainExtension
+
+  WWWBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref WWWBucket
+      PolicyDocument:
+        Statement:
+          Sid: AddPerm
+          Effect: Allow
+          Principal: "*"
+          Action: "s3:GetObject"
+          Resource: !Join 
+          - ''
+          - - "arn:aws:s3:::www."
+            - !Ref DomainName
+            - '.'
+            - !Ref DomainExtension
+            - "/*"
+
+Outputs:
+
+  RootBucket:
+    Description: The Root bucket id
+    Value: !Ref RootBucket
+    Export:
+      Name: !Sub "${AWS::StackName}-root"
+
+  RootBucketArn:
+    Description: The root bucket ARN
+    Value: !GetAtt RootBucket.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-root-arn"
+
+  RootBucketURL:
+    Description: The root bucket URL
+    Value: !GetAtt RootBucket.WebsiteURL
+    Export:
+      Name: !Sub "${AWS::StackName}-root-url"
+
+  WWWBucket:
+    Description: The www domain bucket id
+    Value: !Ref WWWBucket
+    Export:
+      Name: !Sub "${AWS::StackName}-www"
+
+  WWWBucketArn:
+    Description: The www domain bucket ARN
+    Value: !GetAtt WWWBucket.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-www-arn"
