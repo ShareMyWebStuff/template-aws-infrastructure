@@ -84,6 +84,7 @@ Before creating your infrastructure you will need an AWS account and to have cre
 In the AWS console, goto EC2. Down the left hand side under network and security select "Key Pairs". When you create a key pair the pem 
 file will be automatically downloaded to your download directory. To create a pem file to connect to the EC2 instance.
 1.  Select "Create Key Pair"
+  1. Ordered sub-list
   1.    Enter the name. For instance "sharemytutoring-kp"
   1.    Select the file format (pem).
   1.    Click "Create Key Pair". 
