@@ -91,6 +91,14 @@ file will be automatically downloaded to your download directory. To create a pe
 2.  The sharemytutoring-kp.pem file will automartically be downloaded. Keep this in a safe place as it will be used to connect to any EC2 
 instances you create.
 
+1. First ordered list item
+2. Another item
+  * Unordered sub-list. 
+1. Actual numbers don't matter, just that it's a number
+  1. Ordered sub-list
+4. And another item.
+
+
 #### Once Hosting Zone is Created
 
 Once the hosting zone is created we need to point our domain names DNS name servers to AWS. 
