@@ -49,7 +49,7 @@ This project makes the following assumptions
 3.  You have created a key pair (explained later)
 4.  You have purchased a domain name (mine is hosted by 1 and 1)
 
-** Finally, to create this project on AWS you need to understand that it will predominently be covered by free tier but some of the setup may mean you occur charges.
+**Finally, to create this project on AWS you need to understand that it will predominently be covered by free tier but some of the setup may mean you occur charges.**
 
 
 ## Create the Infrastructure (this repository)
@@ -84,9 +84,9 @@ Before creating your infrastructure you will need an AWS account and to have cre
 In the AWS console, goto EC2. Down the left hand side under network and security select "Key Pairs". When you create a key pair the pem 
 file will be automatically downloaded to your download directory. To create a pem file to connect to the EC2 instance.
 1.  Select "Create Key Pair"
-⋅⋅1.    Enter the name. For instance "sharemytutoring-kp"
-⋅⋅1.    Select the file format (pem).
-⋅⋅1.    Click "Create Key Pair". 
+  1.    Enter the name. For instance "sharemytutoring-kp"
+  2.    Select the file format (pem).
+  3.    Click "Create Key Pair". 
 2.  The sharemytutoring-kp.pem file will automartically be downloaded. Keep this in a safe place as it will be used to connect to any EC2 
 instances you create.
 
@@ -126,7 +126,7 @@ create-bucket-hosting
 ### Create Cloudfront Hosting
 
 To create a cloudfront setup the following stacks are required. 
-** Two of these stacks need to be run out of the US East ( N. Virginia) region as this is a requirement for certificates and lambda edge functions. The others should be run in the same region you want to run them in.
+**Two of these stacks need to be run out of the US East ( N. Virginia) region as this is a requirement for certificates and lambda edge functions. The others should be run in the same region you want to run them in.**
 
 create-vpc
 create-mysql-rds
@@ -253,7 +253,7 @@ Once this cloudformation file is uploaded it will create the route53 hosted zone
 ## create-certificate
 
 This cloudformation file creates the SSL certificate for your website.
-** This needs to be run in the N. Virginia region.
+**This needs to be run in the N. Virginia region.**
 
 ### Parameters
 
@@ -323,7 +323,47 @@ Once this cloudformation file is uploaded it will create the route53 hosted zone
 
 ## create-public-ec2
 
-This cloudformation file creates an EC2 instance, this instance allows us to connect to the database when we need to create items such as tables, stored procedures and data loads. The EC2 instance can be sshed through by mySQL workbench.
+This cloudformation file creates an EC2 instance, this instance allows us to connect to the database when we need to create items such as tables, stored procedures and data loads. The EC2 instance can be sshed through by mySQL workbench. The EC2 instance can be recreated or stopped and started when you want to deploy database items. 
+
+**Putty**
+
+AWS creates a PEM file for the key pair, putty needs a ppk (private key) file. The ppk can be generated from the pem file using puttygen.
+1.  Download putty.
+2.  Open PuttyGen
+3.  Click the load button, set the file type to "*" and select the AWS PEM file.
+4.  Click save private key.
+
+After running this script and the successful creation of the EC2 instance. Putty can be configured to connect to this EC2 server.
+
+1.  Find the AWS EC2 instance on AWS console. 
+2.  Select the instance and click the connect button at the top of the screen next to the Launch Instance button. This will display the connection details.
+3.  Get the user name and IP address of the EC2 instance from the connection screen.
+4.  Open the putty connect screen.
+  1.    Enter the IP address on the Session tab
+  2.    On the connection->Data screen enter the EC2 user name. Usually ec2-user.
+  3.    On the Connection-> SSH -> Auth screen browse to the ppk we creted earlier.
+  4.    Save the connection details and click Open.
+5.  You should now be connected to the EC2 Instance.
+
+**MySQL Workbench SSH PassThrough Setup**
+
+Once the EC2 Instance is set
+
+1.  Start MySQL workbench on your local computer
+2.  Select Database -> Manage Connections from the menu at the top.
+3.  Goto your AWS MySQL database and get its end point e.g. sharemytutoring.<unique number>.eu-west-2.rds.amazonaws.com
+4.  Set the follow inputs on the Manage Server Connection from Workbench
+  1.    Connection Method   Standard TCP/IP over SSH
+  2.    SSH Hostname        The IP address of your EC2 instance
+  3.    SSH Username        The ec2 username e.g. ec2-user
+  4.    SSH Key File        Browse and select the AWS PEM file we generated (KeyPair)
+  5.    MySQL Hostname      This is the end point we found at 3.
+  6.    MySQL Server Port   3306 - unless you have changed the port number.
+  7.    Username            Admin - or the user name you created when creating the database
+5.  Click test connection at the bottom of the screen
+
+You should now be able to connect the the MySQL database via the EC2 instance
+
 
 ### Parameters
 
@@ -340,156 +380,5 @@ Once this cloudformation file is uploaded it will create the route53 hosted zone
 | Item              | Name                                 | Description                                                                            |
 | ----              | ----                                 | ------------                                                                           |
 | EC2 Instance      |                                      | Creas an EC2 instance.                                                                 |
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-## create-certificate.yml
-
-
-This cloudformation file creates a certificate for the website. Once this is run you will need to add a CNAME entry that AWS supplies.
-
-
-### Parameters
-
-| Parameter Name      | Default Value    | Parameter Description                                                                                             |
-| --------------      | -------------    | ---------------------                                                                                             |
-| DomainName:         | sharemytutoring. | This contains the fully qualified domain name ( www.daveferguson.io )                                             |
-| HostedZoneID:       | Not specified.   | This allows to select the hosting zone for your website.                                                          |
-
-
-### AWS Items Created
-
-| Item              | Name                                 | Description                                                                            |
-| ----              | ----                                 | ------------                                                                           |
-| Certificate       | www.sharemytutoring.co.uk            | The ssl certificate.                                                                   |
-
-
-
-
-## create-cloudfront.yml [ NOT COMPLETE YET ]
-
-
-This will create a cloudfront in a specified region.
-
-
-### Parameters
-
-DomainName:             sharemytutoring.  This contains just the domain name without the domain extension.
-???
-
-### AWS Items Created
-
-| Item              | Name                                 | Description                                                                            |
-| ----              | ----                                 | ------------                                                                           |
-|                   |                                      |                                                                                        |
-
-
-
-
-## create_SES.yml [ NOT COMPLETE YET ]
-
-This will create a SNS instance to allow us to send texts and emails to our clients. These will be used to verify the clients email address or mobile number.
-
-### Parameters
-
-DomainName:             sharemytutoring.  This contains just the domain name without the domain extension.
-???
-
-### AWS Items Created
-
-| Item              | Name                                 | Description                                                                            |
-| ----              | ----                                 | ------------                                                                           |
-|                   |                                      |                                                                                        |
-
-
-
-
-## create-public-ec2.yml
-
-
-This will create an EC2 instance in the public subnet A. This file if loaded into the AWS console will allow you to select the specific 
-details you require to create the instance in the VPC we have created.
-
-
-When this is running you can ssh via an emulator such as putty and connect to this server or connect to the database using workbench being routed via ssh.
-
-
-When you have finished with this server the cloudformation stack can be deleted and the server will be terminated.
-
-
-**Putty**
-
-AWS creates a PEM file for the key pair, putty needs a ppk (private key) file. The ppk can be generated from the pem file using puttygen.
-1.  Download putty.
-2.  Open PuttyGen
-3.  Click the load button, set the file type to "*" and select the AWS PEM file.
-4.  Click save private key.
-
-After running this script and the successful creation of the EC2 instance. Putty can be configured to connect to this EC2 server.
-
-1.  Find the AWS EC2 instance on AWS console. 
-2.  Select the instance and click the connect button at the top of the screen next to the Launch Instance button. This will display the connection details.
-3.  Get the user name and IP address of the EC2 instance from the connection screen.
-4.  Open the putty connect screen.
-⋅⋅1.    Enter the IP address on the Session tab
-⋅⋅2.    On the connection->Data screen enter the EC2 user name. Usually ec2-user.
-⋅⋅3.    On the Connection-> SSH -> Auth screen browse to the ppk we creted earlier.
-⋅⋅4.    Save the connection details and click Open.
-5.  You should now be connected to the EC2 Instance.
-
-**MySQL Workbench SSH PassThrough Setup**
-
-Once the EC2 Instance is set
-
-1.  Start MySQL workbench on your local computer
-2.  Select Database -> Manage Connections from the menu at the top.
-3.  Goto your AWS MySQL database and get its end point e.g. sharemytutoring.<unique number>.eu-west-2.rds.amazonaws.com
-4.  Set the follow inputs on the Manage Server Connection from Workbench
-4.1.    Connection Method   Standard TCP/IP over SSH
-4.2.    SSH Hostname        The IP address of your EC2 instance
-4.3.    SSH Username        The ec2 username e.g. ec2-user
-4.4.    SSH Key File        Browse and select the AWS PEM file we generated (KeyPair)
-4.5.    MySQL Hostname      This is the end point we found at 3.
-4.6.    MySQL Server Port   3306 - unless you have changed the port number.
-4.7.    Username            Admin - or the user name you created when creating the database
-5.  Click test connection at the bottom of the screen
-
-You should now be able to connect the the MySQL database via the EC2 instance
-
-### Parameters
-
-
-| Parameter Name      | Default Value    | Parameter Description                                                                                             |
-| --------------      | -------------    | ---------------------                                                                                             |
-| DomainName:         | sharemytutoring  | This contains just the domain name without the domain extension.                                                  |
-| DomainExtension:    | info             | This contains the domain extension for instance co.uk, co, com etc.                                               |
-| KeyPairName:        | Not specified.   | This is the keypair used to ssh to the server.                                                                    |
-| FrontSecurityGroup: | Not specified.   | This is the public security group (Front End).                                                                    |
-| PublicSubnet:       | Not specified.   | This is the public subnet of the VPC we have created.                                                             |
-| InstanceType:       | t2.micro         | The server size of the EC2 instance.                                                                              |
-
-
-### AWS Items Created
-
-| Item              | Name                                 | Description                                                                            |
-| ----              | ----                                 | ------------                                                                           |
-| EC2 Instance      |  sharemytutoring-info-public-ec2     | An EC2 instance that allows you to connect to the MySQL database we have in our        |
-|                   |                                      | private subnet.                                                                        |
 
 
