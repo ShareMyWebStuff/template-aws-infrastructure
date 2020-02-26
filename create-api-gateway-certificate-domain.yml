@@ -1,0 +1,103 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Description: 'This template creates a bespoke domain name for the api, Mine is called api.sharemytutoring.com. See README.md for a indepth description.'
+
+#
+# Define the parameters
+#
+# - DomainName
+# - DomainExtension
+#
+Parameters:
+
+  DomainName:
+    Type: String
+    Description: This is the name of the domain (without the extension).
+    AllowedPattern: "[a-z0-9-]+"
+    MinLength: 1
+    MaxLength: 64
+    Default: sharemytutoring
+    ConstraintDescription: enter a valid domain name without the extension
+
+  DomainExtension:
+    Type: String
+    Description: This is the domain extension (com / co.uk / info)
+    AllowedPattern: "[a-z0-9.]+"
+    Default: com
+    ConstraintDescription: a valid domain extension
+
+  StackNameHostedZone:
+    Description: This is the stack name of the associated hosted zone
+    Type: String
+    AllowedPattern: "[a-zA-Z0-9-.]+"
+    Default: sharemytutoring-com-hosted-zone
+    ConstraintDescription: a valid stack name for the associated hosted zone
+
+#
+# Define the resources
+#
+Resources:
+
+  #
+  # Create the certificate for the api gateway domain name
+  #
+  Certificate:
+    Type: AWS::CertificateManager::Certificate
+    Properties:
+      DomainName: !Join ['', [!Ref DomainName,  ".", !Ref DomainExtension ] ]
+      ValidationMethod: DNS
+      SubjectAlternativeNames:
+      - !Join ['', [!Ref DomainName,  ".", !Ref DomainExtension ] ]
+      - !Join ['', ['*.', !Ref DomainName,  ".", !Ref DomainExtension ] ]
+      DomainValidationOptions:
+      - DomainName: !Join ['', [!Ref DomainName,  ".", !Ref DomainExtension ] ]
+        ValidationDomain: !Join ['', [!Ref DomainName,  ".", !Ref DomainExtension ] ]
+      Tags:
+        - Key: HostedZoneId
+          Value:
+            Fn::ImportValue: !Sub "${StackNameHostedZone}-id"
+
+
+  APIDomainName:
+    Type: AWS::ApiGateway::DomainName
+    DependsOn: Certificate
+    Properties:
+      DomainName: !Join ['', ['api.', !Ref DomainName,  ".", !Ref DomainExtension ] ]
+      EndpointConfiguration: 
+        Types:
+          - REGIONAL
+      RegionalCertificateArn: !Ref Certificate
+
+  Domain:
+    Type: AWS::Route53::RecordSetGroup
+    DependsOn: APIDomainName
+    Properties:
+      HostedZoneId: 
+        Fn::ImportValue: !Sub "${StackNameHostedZone}-id"
+      RecordSets:
+        - Name: !Join ['', ['api.', !Ref DomainName,  ".", !Ref DomainExtension ] ]
+          Type: A
+          AliasTarget:
+            DNSName: !GetAtt APIDomainName.RegionalDomainName
+            HostedZoneId: !GetAtt APIDomainName.RegionalHostedZoneId
+
+Outputs:
+
+  Certificate:
+    Description: The ARN of the api gateway domain certificate
+    Value: !Ref Certificate
+
+  APIDomainNameID:
+    Description: "API Domain - Logical ID"
+    Value: !Ref APIDomainName
+    Export:
+      Name: !Sub "${AWS::StackName}-api-domain-id"
+
+
+  APIDomainNameRegionalDomainName:
+    Description: "API Domain - Regional Domain Name"
+    Value: !GetAtt APIDomainName.RegionalDomainName
+
+  APIDomainNameRegionalHostedZoneId:
+    Description: "API Domain - Regional Hosted zone ID"
+    Value: !GetAtt APIDomainName.RegionalHostedZoneId

@@ -66,21 +66,6 @@ Resources:
           Value: !Ref HostedZoneID
 
 
-  # Certificate:
-  #   Type: AWS::CertificateManager::Certificate
-  #   Properties:
-  #     DomainName: !Join ['', ['*.', !Ref DomainName,  ".", !Ref DomainExtension ] ]
-  #     ValidationMethod: DNS
-  #     SubjectAlternativeNames:
-  #     - !Join ['', [!Ref DomainName,  ".", !Ref DomainExtension ] ]
-  #     - !Join ['', ['*.', !Ref DomainName,  ".", !Ref DomainExtension ] ]
-  #     DomainValidationOptions:
-  #     - DomainName: !Join ['', [!Ref DomainName,  ".", !Ref DomainExtension ] ]
-  #       ValidationDomain: !Join ['', [!Ref DomainName,  ".", !Ref DomainExtension ] ]
-  #     Tags:
-  #       - Key: HostedZoneId
-  #         Value: !Ref HostedZoneID
-
 Outputs:
 
   Certificate:

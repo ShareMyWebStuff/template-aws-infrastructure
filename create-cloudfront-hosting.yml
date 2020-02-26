@@ -145,6 +145,18 @@ Resources:
         HostedZoneId: Z2FDTNDATAQYW2      # This Zone ID is used for any CloudFront Distribution
         DNSName: !GetAtt CloudFrontDistribution.DomainName
 
+  Route53RecordWWW:
+    Type: AWS::Route53::RecordSet
+    DependsOn: 
+    - CloudFrontDistribution
+    Properties:
+      HostedZoneId: 
+        Fn::ImportValue: !Sub "${StackNameHostedZone}-id"
+      Name: !Join ['.', ['www', !Ref DomainName, !Ref DomainExtension ]]
+      Type: A
+      AliasTarget:
+        HostedZoneId: Z2FDTNDATAQYW2      # This Zone ID is used for any CloudFront Distribution
+        DNSName: !GetAtt CloudFrontDistribution.DomainName
 
 Outputs:
 
@@ -159,3 +171,11 @@ Outputs:
   Domain:
     Description: 'Cloudfront Domain'
     Value: !GetAtt CloudFrontDistribution.DomainName
+
+  DomainZone:
+    Description: 'The domain zone for the <domain name>.'
+    Value: !Ref Route53Record
+
+  DomainZoneWWW:
+    Description: 'The domain zone for the www.<domain name>.'
+    Value: !Ref Route53RecordWWW
