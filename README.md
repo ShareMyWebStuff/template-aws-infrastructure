@@ -17,6 +17,40 @@ This project consists of the following repositories.
 
 This repositories should be viewed in the order they are listed above.
 
+Finally once the repositories are loaded in the above order a SMTP server needs to be created.
+
+Goto SES
+-  Enter domain name (sharemytutoring.com), click Generate DKIM and hit Verify This Domain.
+
+The next screen will state which records you need to add to Route53
+- Domain Verification Record 
+- DKIM Record Set
+- Email Receiving Record
+
+If you select "Use Route 53" all records will be added apart from the MX. You need to click the checkbox for this.
+
+Once this is done you need to create an S3 bucket to store the emails you receive.
+I called my bucket: email.sharemytutoring.com
+
+Add the following permissions to the bucket.
+https://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-permissions.html
+
+The permissions will need the bucket name and account id. The AWS account id is retrieved from the menu bar support->support-center.
+
+Npow from SES choose Rule Sets for the left menu
+
+- Leave the recipient blank as we want tpo receive all emails who ever they are too.
+- Click Next.
+
+Select action of S3 bucket and choose the bucket then next step.
+
+Finally choose a rule name "AllReceivedEmails", ensure Enabled and Virus scanning are enabled.
+
+Click next, review the options and confirm.
+
+
+
+
 
 ### Repositories
 
