@@ -87,6 +87,7 @@ Resources:
       DistributionConfig:
         Aliases:
         - !Join ['.', [!Ref DomainName, !Ref DomainExtension ]]
+        - !Join ['.', ['www', !Ref DomainName, !Ref DomainExtension ]]
         Comment: 'Tester'
         ViewerCertificate: 
           AcmCertificateArn: !Ref CertificateArn
